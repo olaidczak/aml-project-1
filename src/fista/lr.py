@@ -16,6 +16,7 @@ MEASURES = {
 class LogisticRegression:
     def __init__(self):
         self.beta = None
+        self.b0 = None
         self.X = None
         self.y = None
         self.lmbd = None
@@ -36,9 +37,13 @@ class LogisticRegression:
     def soft_thresh(self, z, l):
         return np.sign(z) * np.maximum(np.abs(z) - l, 0)
 
-    def grad(self, X: pd.DataFrame, y: pd.DataFrame, beta):
+    def grad(self, X: pd.DataFrame, y: pd.DataFrame, beta, b0):
         n = len(X)
-        return X.T @ (self.sigmoid(X @ beta) - y) / n
+        probs = self.sigmoid(X @ beta + b0)
+        error = probs - y
+        grad_beta = X.T @ error / n
+        grad_b0 = np.sum(error) / n
+        return grad_b0, grad_beta
 
     def lip_const(self, X: pd.DataFrame):
         return (np.linalg.norm(X) ** 2) / (4 * len(X))
@@ -56,27 +61,37 @@ class LogisticRegression:
         n, p = X_train.shape
         L = self.lip_const(X_train)
         step = 1 / L
-        beta = np.zeros(p)
+        beta = np.zeros(p)  # regularized
+        b0 = 0.0  # intercept - not regularized
+
+        # FISTA variables
         beta_old = beta.copy()
-        y = beta.copy()
+        b0_old = b0
+        y_beta = beta.copy()
+        y_b0 = b0
         t = 1
-        t_new = t
 
         for i in range(n_iter):
-            z = y - step * self.grad(X_train, y_train, beta)
-            beta_new = self.soft_thresh(z, lmbd * step)
-            t_new = (1 + np.sqrt(1 + 4 * (t**2))) / 2
-            y = beta + (t - 1) * (beta_new - beta) / t_new
+            grad_b0, grad_beta = self.grad(X_train, y_train, y_beta, y_b0)
+            z_beta = y_beta - step * grad_beta
+            z_b0 = y_b0 - step * grad_b0
+            beta_new = self.soft_thresh(z_beta, lmbd * step)
+            b0_new = z_b0
+            t_new = (1 + np.sqrt(1 + 4 * t**2)) / 2
+            y_beta = beta_new + (t - 1) / t_new * (beta_new - beta)
+            y_b0 = b0_new + (t - 1) / t_new * (b0_new - b0)
             beta = beta_new
+            b0 = b0_new
             t = t_new
 
         self.beta = beta
+        self.b0 = b0
 
     def validate(self, X_valid: pd.Dataframe, y_valid: pd.Dataframe, measure: str):
         if measure not in MEASURES:
             raise ValueError(f"Unsupported measure: {measure}")
 
-        lambdas = [0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1, 2, 3, 5, 10]
+        lambdas = [0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10]
 
         for l in lambdas:
             self.fit(self.X, self.y, lmbd=l)
@@ -92,7 +107,7 @@ class LogisticRegression:
 
     def predict_proba(self, X_test: pd.Dataframe):
         XB = X_test @ self.beta
-        return self.sigmoid(XB)
+        return self.sigmoid(XB + self.b0)
 
     def plot(self, measure):
         if measure not in MEASURES:
@@ -118,14 +133,14 @@ class LogisticRegression:
         lambdas = lambdas[sorted_idx]
         coeffs = np.array([self.betas[l] for l in lambdas])
         n_coeffs = coeffs.shape[1]
-        
+
         fig, ax = plt.subplots(figsize=(10, 7))
         for i in range(n_coeffs):
-            plt.plot(lambdas, coeffs[:, i], label=f"b{i}")
+            plt.plot(lambdas, coeffs[:, i], label=f"b{i+1}")
 
         ax.set_xlabel("Lambda")
         ax.set_ylabel("Coefficient value")
         ax.set_title("Coefficient value depending on regularizarion strength")
         ax.legend()
-        # plt.xscale("log")  
+        # plt.xscale("log")
         # ax.show()
