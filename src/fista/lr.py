@@ -14,7 +14,14 @@ MEASURES = {
 
 
 class LogisticRegression:
+    """Logistic regression classifier with L1 regularization using FISTA algorithm.
+
+    This class implements logistic regression with L1 (Lasso) regularization, optimized using FISTA algorithm.
+    It supports lambda optimization based on the validation datset and chosen performance metric.
+    """
+
     def __init__(self):
+        """Initialize LogisticRegression with empty results."""
         self.beta = None
         self.b0 = None
         self.X = None
@@ -31,13 +38,43 @@ class LogisticRegression:
         }
         self.results = results
 
-    def sigmoid(self, X: pd.DataFrame):
+    def sigmoid(self, X: pd.DataFrame) -> np.ndarray:
+        """Compute sigmoid activation function.
+
+        Args:
+            X: Input array.
+
+        Returns:
+            Sigmoid of X (element-wise).
+        """
         return 1 / (1 + np.exp(-X))
 
-    def soft_thresh(self, z, l):
+    def soft_thresh(self, z: np.ndarray, l: float) -> np.ndarray:
+        """Apply soft thresholding for L1 regularization.
+
+        Args:
+            z: Input array to threshold.
+            l: Regularization stength lambda.
+
+        Returns:
+            Soft-thresholded array: sign(z) * max(|z| - l, 0).
+        """
         return np.sign(z) * np.maximum(np.abs(z) - l, 0)
 
-    def grad(self, X: pd.DataFrame, y: pd.DataFrame, beta, b0):
+    def grad(
+        self, X: pd.DataFrame, y: pd.DataFrame, beta: np.ndarray, b0: float
+    ) -> tuple[float, np.ndarray]:
+        """Compute gradient of logistic loss function.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            beta: Coefficient vector.
+            b0: Intercept.
+
+        Returns:
+            Tuple of (grad_b0, grad_beta) - gradients with respect to intercept and coefficients.
+        """
         n = len(X)
         probs = self.sigmoid(X @ beta + b0)
         error = probs - y
@@ -45,7 +82,15 @@ class LogisticRegression:
         grad_b0 = np.sum(error) / n
         return grad_b0, grad_beta
 
-    def lip_const(self, X: pd.DataFrame):
+    def lip_const(self, X: pd.DataFrame) -> float:
+        """Compute Lipschitz constant for gradient of logistic loss.
+
+        Args:
+            X: Feature matrix.
+
+        Returns:
+            Lipschitz constant used as the step size in FISTA.
+        """
         return (np.linalg.norm(X) ** 2) / (4 * len(X))
 
     def fit(
@@ -54,7 +99,16 @@ class LogisticRegression:
         y_train: pd.DataFrame,
         lmbd: float = 0.5,
         n_iter: int = 1000,
-    ):
+    ) -> None:
+        """Fit logistic regression model using FISTA algorithm.
+
+        Args:
+            X_train: Training feature matrix.
+            y_train: Training labels (binary, 0 or 1).
+            lmbd: L1 regularization parameter (default: 0.5).
+            n_iter: Number of iterations (default: 1000).
+        """
+
         self.X = X_train
         self.y = y_train
         self.lmbd = lmbd
@@ -63,8 +117,6 @@ class LogisticRegression:
         step = 1 / L
         beta = np.zeros(p)  # regularized
         b0 = 0.0  # intercept - not regularized
-
-        # FISTA variables
         beta_old = beta.copy()
         b0_old = b0
         y_beta = beta.copy()
@@ -87,7 +139,22 @@ class LogisticRegression:
         self.beta = beta
         self.b0 = b0
 
-    def validate(self, X_valid: pd.Dataframe, y_valid: pd.Dataframe, measure: str):
+    def validate(
+        self, X_valid: pd.DataFrame, y_valid: pd.DataFrame, measure: str
+    ) -> None:
+        """Validate model on validation set across multiple regularization strengths.
+
+        Fits the model with different lambda values and selects the best based on
+        the specified performance measure.
+
+        Args:
+            X_valid: Validation feature matrix.
+            y_valid: Validation labels.
+            measure: Performance metric to optimize ('recall', 'precision', 'f1', 'bal_acc', 'roc_auc', or 'pr_auc').
+
+        Raises:
+            ValueError: If measure is not in supported metrics.
+        """
         if measure not in MEASURES:
             raise ValueError(f"Unsupported measure: {measure}")
 
@@ -105,11 +172,27 @@ class LogisticRegression:
         self.lmbd = lambdas[best_id]
         self.beta = self.betas[self.lmbd]
 
-    def predict_proba(self, X_test: pd.Dataframe):
+    def predict_proba(self, X_test: pd.DataFrame) -> np.ndarray:
+        """Predict probability of positive class.
+
+        Args:
+            X_test: Test feature matrix.
+
+        Returns:
+            Predicted probabilities in range [0, 1].
+        """
         XB = X_test @ self.beta
         return self.sigmoid(XB + self.b0)
 
-    def plot(self, measure):
+    def plot(self, measure: str) -> None:
+        """Plot performance metric across lambda values.
+
+        Args:
+            measure: Performance metric to plot ('recall', 'precision', 'f1', 'bal_acc', 'roc_auc', or 'pr_auc').
+
+        Raises:
+            ValueError: If measure is not supported or if validation hasn't been run.
+        """
         if measure not in MEASURES:
             raise ValueError(f"Unsupported measure: {measure}")
 
@@ -127,7 +210,13 @@ class LogisticRegression:
         plt.title(f"{measure} vs lambda ")
         plt.show()
 
-    def plot_coefficients(self):
+    # to do plot b0??
+    def plot_coefficients(self) -> None:
+        """Plot coefficient values across lambda regularization strengths.
+
+        Visualizes how each coefficient changes as the regularization parameter lambda increases,
+        showing the effect of L1 regularization on feature selection.
+        """
         lambdas = np.array([float(k) for k in self.betas.keys()])
         sorted_idx = np.argsort(lambdas)
         lambdas = lambdas[sorted_idx]
@@ -136,11 +225,11 @@ class LogisticRegression:
 
         fig, ax = plt.subplots(figsize=(10, 7))
         for i in range(n_coeffs):
-            plt.plot(lambdas, coeffs[:, i], label=f"b{i+1}")
+            plt.plot(lambdas, coeffs[:, i], label=f"b{i+1}", marker="o")
 
         ax.set_xlabel("Lambda")
         ax.set_ylabel("Coefficient value")
         ax.set_title("Coefficient value depending on regularizarion strength")
         ax.legend()
-        # plt.xscale("log")
+        # ax.set_yscale("log")
         # ax.show()
