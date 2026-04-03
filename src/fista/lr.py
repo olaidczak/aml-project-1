@@ -20,14 +20,22 @@ class LogisticRegression:
     It supports lambda optimization based on the validation datset and chosen performance metric.
     """
 
-    def __init__(self):
-        """Initialize LogisticRegression with empty results."""
+    def __init__(self, lmbd: float = 0.5, n_iter: int = 1000):
+        """Initialize LogisticRegression with empty results
+
+        Args:
+           lmbd: L1 regularization parameter (default: 0.5).
+           n_iter: Number of iterations (default: 1000).
+        """
+        self.n_iter = n_iter
         self.beta = None
         self.b0 = None
         self.X = None
         self.y = None
-        self.lmbd = None
+        self.lmbd = lmbd
+        self.best_lmbds = None
         self.betas = {}
+        self.b0s = {}
         results = {
             "recall": [],
             "precision": [],
@@ -93,25 +101,18 @@ class LogisticRegression:
         """
         return (np.linalg.norm(X) ** 2) / (4 * len(X))
 
-    def fit(
-        self,
-        X_train: pd.DataFrame,
-        y_train: pd.DataFrame,
-        lmbd: float = 0.5,
-        n_iter: int = 1000,
-    ) -> None:
+    def fit(self, X_train: pd.DataFrame, y_train: pd.DataFrame) -> None:
         """Fit logistic regression model using FISTA algorithm.
 
         Args:
             X_train: Training feature matrix.
-            y_train: Training labels (binary, 0 or 1).
-            lmbd: L1 regularization parameter (default: 0.5).
-            n_iter: Number of iterations (default: 1000).
+            y_train: Training labels.
         """
 
         self.X = X_train
         self.y = y_train
-        self.lmbd = lmbd
+        lmbd = self.lmbd
+        n_iter = self.n_iter
         n, p = X_train.shape
         L = self.lip_const(X_train)
         step = 1 / L
@@ -144,8 +145,9 @@ class LogisticRegression:
     ) -> None:
         """Validate model on validation set across multiple regularization strengths.
 
-        Fits the model with different lambda values and selects the best based on
-        the specified performance measure.
+        Fits the model with different lambda values and selects the best lambda based on
+        the specified performance measure. After performing the method the optimal lambda 
+        and corresponding betas are set as if method fit() was performed with the optimal lambda.
 
         Args:
             X_valid: Validation feature matrix.
@@ -161,16 +163,19 @@ class LogisticRegression:
         lambdas = [0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10]
 
         for l in lambdas:
-            self.fit(self.X, self.y, lmbd=l)
+            self.lmbd = l
+            self.fit(self.X, self.y)
             y_score = self.predict_proba(X_valid)
             y_pred = y_score > 0.5
             val = MEASURES[measure].evaluate(y_valid, y_pred, y_score)
             self.results[measure].append(val)
             self.betas[l] = self.beta
+            self.b0s[l] = self.b0
 
         best_id = np.argmax(self.results[measure])
         self.lmbd = lambdas[best_id]
         self.beta = self.betas[self.lmbd]
+        self.b0 = self.b0s[self.lmbd]
 
     def predict_proba(self, X_test: pd.DataFrame) -> np.ndarray:
         """Predict probability of positive class.
@@ -185,7 +190,7 @@ class LogisticRegression:
         return self.sigmoid(XB + self.b0)
 
     def plot(self, measure: str) -> None:
-        """Plot performance metric across lambda values.
+        """Plot performance metric (model fit on X_train and evaluated on X_valid) across lambda values. 
 
         Args:
             measure: Performance metric to plot ('recall', 'precision', 'f1', 'bal_acc', 'roc_auc', or 'pr_auc').
@@ -198,7 +203,7 @@ class LogisticRegression:
 
         if not self.results[measure]:
             raise ValueError(
-                f"No results for {measure}. Perform method validate(X_valid, y_valid, {measure}) first."
+                f"No results for {measure}. Perform method validate(X_valid, y_valid, \"{measure}\") first."
             )
 
         x = sorted(self.betas.keys(), key=float)
@@ -207,7 +212,7 @@ class LogisticRegression:
         plt.plot(x, y, marker="o")
         plt.xlabel("Lambda")
         plt.ylabel(measure)
-        plt.title(f"{measure} vs lambda ")
+        plt.title(f"{measure} on X_valid vs lambda\nModel fitted on X_train")
         plt.show()
 
     # to do plot b0??
