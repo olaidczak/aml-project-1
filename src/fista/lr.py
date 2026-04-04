@@ -89,8 +89,8 @@ class LogisticRegression:
         n = len(X)
         probs = self.sigmoid(X @ beta + b0)
         error = probs - y
-        grad_beta = X.T @ error / n
-        grad_b0 = np.sum(error) / n
+        grad_beta = X.T @ error # / n
+        grad_b0 = np.sum(error) # / n
         return grad_b0, grad_beta
 
     def lip_const(self, X: pd.DataFrame) -> float:
@@ -102,7 +102,7 @@ class LogisticRegression:
         Returns:
             Lipschitz constant used as the step size in FISTA.
         """
-        return np.linalg.norm(X, ord=2) ** 2 / (4 * len(X))
+        return np.linalg.norm(X, ord=2) ** 2 / 4 #(4 * len(X))
 
     def fit(self, X_train: pd.DataFrame, y_train: pd.DataFrame) -> None:
         """Fit logistic regression model using FISTA algorithm.
