@@ -20,14 +20,16 @@ class LogisticRegression:
     It supports lambda optimization based on the validation datset and chosen performance metric.
     """
 
-    def __init__(self, lmbd: float = 0.5, n_iter: int = 1000):
+    def __init__(self, lmbd: float = 0.5, max_iter: int = 1000, tol: float = 1e-4):
         """Initialize LogisticRegression with empty results
 
         Args:
            lmbd: L1 regularization parameter (default: 0.5).
-           n_iter: Number of iterations (default: 1000).
+           max_iter: Maximum number of iterations (default: 1000).
+           tol: Stopping criterion. The optimization problem is solved when ||b_{n} - b_{n-1}|| < tol (default: 1e-4). 
         """
-        self.n_iter = n_iter
+        self.max_iter = max_iter
+        self.tol = tol
         self.beta = None
         self.b0 = None
         self.X = None
@@ -99,7 +101,7 @@ class LogisticRegression:
         Returns:
             Lipschitz constant used as the step size in FISTA.
         """
-        return (np.linalg.norm(X) ** 2) / (4 * len(X))
+        return np.linalg.norm(X, ord=2) ** 2 / (4 * len(X))
 
     def fit(self, X_train: pd.DataFrame, y_train: pd.DataFrame) -> None:
         """Fit logistic regression model using FISTA algorithm.
@@ -112,19 +114,19 @@ class LogisticRegression:
         self.X = X_train
         self.y = y_train
         lmbd = self.lmbd
-        n_iter = self.n_iter
+        max_iter = self.max_iter
         n, p = X_train.shape
         L = self.lip_const(X_train)
         step = 1 / L
         beta = np.zeros(p)  # regularized
-        b0 = 0.0  # intercept - not regularized
-        beta_old = beta.copy()
-        b0_old = b0
+        b0 = 0.0  # intercept not regularized
+        # beta_old = beta.copy()
+        # b0_old = b0
         y_beta = beta.copy()
         y_b0 = b0
         t = 1
 
-        for i in range(n_iter):
+        for i in range(max_iter):
             grad_b0, grad_beta = self.grad(X_train, y_train, y_beta, y_b0)
             z_beta = y_beta - step * grad_beta
             z_b0 = y_b0 - step * grad_b0
@@ -133,9 +135,17 @@ class LogisticRegression:
             t_new = (1 + np.sqrt(1 + 4 * t**2)) / 2
             y_beta = beta_new + (t - 1) / t_new * (beta_new - beta)
             y_b0 = b0_new + (t - 1) / t_new * (b0_new - b0)
+
+            # check convergence 
+            beta_change = np.linalg.norm(beta_new - beta)
+            b0_change = np.abs(b0_new - b0)
+
             beta = beta_new
             b0 = b0_new
             t = t_new
+
+            if beta_change < self.tol and b0_change < self.tol:
+                break
 
         self.beta = beta
         self.b0 = b0
@@ -159,7 +169,11 @@ class LogisticRegression:
         """
         if measure not in MEASURES:
             raise ValueError(f"Unsupported measure: {measure}")
+        
+        if self.X is None:
+            raise ValueError("Call fit() before validate().")
 
+        self.results[measure] = []
         lambdas = [0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10]
 
         for l in lambdas:
@@ -222,6 +236,9 @@ class LogisticRegression:
         Visualizes how each coefficient changes as the regularization parameter lambda increases,
         showing the effect of L1 regularization on feature selection.
         """
+        original_lmbd = self.lmbd
+        original_beta = self.beta
+        original_b0 = self.b0
         if not self.betas:
             lambdas = [0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10]
             for l in lambdas:
@@ -229,6 +246,9 @@ class LogisticRegression:
                 self.fit(self.X, self.y)
                 self.betas[l] = self.beta
                 self.b0s[l] = self.b0
+        self.lmbd = original_lmbd
+        self.beta = original_beta
+        self.b0 = original_b0
 
         lambdas = np.array([float(k) for k in self.betas.keys()])
         sorted_idx = np.argsort(lambdas)
