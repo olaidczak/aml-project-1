@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import warnings
 import matplotlib.pyplot as plt
 from .measures import *
 
@@ -26,7 +27,7 @@ class LogisticRegression:
         Args:
            lmbd: L1 regularization parameter (default: 0.5).
            max_iter: Maximum number of iterations (default: 1000).
-           tol: Stopping criterion. The optimization problem is solved when ||b_{n} - b_{n-1}|| < tol (default: 1e-4). 
+           tol: Stopping criterion (default: 1e-4). The optimization problem is solved when ||b_{n} - b_{n-1}|| < tol.
         """
         self.max_iter = max_iter
         self.tol = tol
@@ -125,6 +126,7 @@ class LogisticRegression:
         y_beta = beta.copy()
         y_b0 = b0
         t = 1
+        did_converge = False
 
         for i in range(max_iter):
             grad_b0, grad_beta = self.grad(X_train, y_train, y_beta, y_b0)
@@ -136,7 +138,7 @@ class LogisticRegression:
             y_beta = beta_new + (t - 1) / t_new * (beta_new - beta)
             y_b0 = b0_new + (t - 1) / t_new * (b0_new - b0)
 
-            # check convergence 
+            # check convergence
             beta_change = np.linalg.norm(beta_new - beta)
             b0_change = np.abs(b0_new - b0)
 
@@ -145,8 +147,14 @@ class LogisticRegression:
             t = t_new
 
             if beta_change < self.tol and b0_change < self.tol:
+                did_converge = True
                 break
 
+        if not did_converge:
+            warnings.warn(
+                f"For lambda = {self.lmbd}, max_iter = {self.max_iter} and tol = {self.tol} the algorithm did not converge",
+                RuntimeWarning,
+            )
         self.beta = beta
         self.b0 = b0
 
@@ -169,7 +177,7 @@ class LogisticRegression:
         """
         if measure not in MEASURES:
             raise ValueError(f"Unsupported measure: {measure}")
-        
+
         if self.X is None:
             raise ValueError("Call fit() before validate().")
 
@@ -258,16 +266,18 @@ class LogisticRegression:
 
         fig, ax = plt.subplots(figsize=(10, 7))
         if n_coeffs <= 10:
-            cmap = plt.cm.get_cmap('tab10')
+            cmap = plt.cm.get_cmap("tab10")
         elif n_coeffs <= 20:
-            cmap = plt.cm.get_cmap('tab20')
+            cmap = plt.cm.get_cmap("tab20")
         else:
-            cmap = plt.cm.get_cmap('hsv')
-        
+            cmap = plt.cm.get_cmap("hsv")
+
         colors = [cmap(i / max(n_coeffs - 1, 1)) for i in range(n_coeffs)]
-        
+
         for i in range(n_coeffs):
-            plt.plot(lambdas, coeffs[:, i], label=f"b{i+1}", marker="o", color=colors[i])
+            plt.plot(
+                lambdas, coeffs[:, i], label=f"b{i+1}", marker="o", color=colors[i]
+            )
 
         ax.set_xlabel("Lambda")
         ax.set_ylabel("Coefficient value")
