@@ -146,7 +146,7 @@ class LogisticRegression:
         """Validate model on validation set across multiple regularization strengths.
 
         Fits the model with different lambda values and selects the best lambda based on
-        the specified performance measure. After performing the method the optimal lambda 
+        the specified performance measure. After performing the method the optimal lambda
         and corresponding betas are set as if method fit() was performed with the optimal lambda.
 
         Args:
@@ -190,7 +190,7 @@ class LogisticRegression:
         return self.sigmoid(XB + self.b0)
 
     def plot(self, measure: str) -> None:
-        """Plot performance metric (model fit on X_train and evaluated on X_valid) across lambda values. 
+        """Plot performance metric (model fit on X_train and evaluated on X_valid) across lambda values.
 
         Args:
             measure: Performance metric to plot ('recall', 'precision', 'f1', 'bal_acc', 'roc_auc', or 'pr_auc').
@@ -203,7 +203,7 @@ class LogisticRegression:
 
         if not self.results[measure]:
             raise ValueError(
-                f"No results for {measure}. Perform method validate(X_valid, y_valid, \"{measure}\") first."
+                f'No results for {measure}. Perform method validate(X_valid, y_valid, "{measure}") first.'
             )
 
         x = sorted(self.betas.keys(), key=float)
@@ -222,6 +222,14 @@ class LogisticRegression:
         Visualizes how each coefficient changes as the regularization parameter lambda increases,
         showing the effect of L1 regularization on feature selection.
         """
+        if not self.betas:
+            lambdas = [0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10]
+            for l in lambdas:
+                self.lmbd = l
+                self.fit(self.X, self.y)
+                self.betas[l] = self.beta
+                self.b0s[l] = self.b0
+
         lambdas = np.array([float(k) for k in self.betas.keys()])
         sorted_idx = np.argsort(lambdas)
         lambdas = lambdas[sorted_idx]
@@ -229,8 +237,17 @@ class LogisticRegression:
         n_coeffs = coeffs.shape[1]
 
         fig, ax = plt.subplots(figsize=(10, 7))
+        if n_coeffs <= 10:
+            cmap = plt.cm.get_cmap('tab10')
+        elif n_coeffs <= 20:
+            cmap = plt.cm.get_cmap('tab20')
+        else:
+            cmap = plt.cm.get_cmap('hsv')
+        
+        colors = [cmap(i / max(n_coeffs - 1, 1)) for i in range(n_coeffs)]
+        
         for i in range(n_coeffs):
-            plt.plot(lambdas, coeffs[:, i], label=f"b{i+1}", marker="o")
+            plt.plot(lambdas, coeffs[:, i], label=f"b{i+1}", marker="o", color=colors[i])
 
         ax.set_xlabel("Lambda")
         ax.set_ylabel("Coefficient value")
