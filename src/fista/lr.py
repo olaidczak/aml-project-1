@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import warnings
 import matplotlib.pyplot as plt
+from scipy.sparse.linalg import eigsh
 from .measures import *
 
 MEASURES = {
@@ -50,7 +51,7 @@ class LogisticRegression:
         self.results = results
 
     def sigmoid(self, X: pd.DataFrame) -> np.ndarray:
-        """Compute sigmoid activation function.
+        """Compute sigmoid function.
 
         Args:
             X: Input array.
@@ -60,17 +61,17 @@ class LogisticRegression:
         """
         return 1 / (1 + np.exp(-X))
 
-    def soft_thresh(self, z: np.ndarray, l: float) -> np.ndarray:
+    def soft_thresh(self, x: np.ndarray, lmbd: float) -> np.ndarray:
         """Apply soft thresholding for L1 regularization.
 
         Args:
-            z: Input array to threshold.
-            l: Regularization stength lambda.
+            x: Input array to threshold.
+            lmbd: Regularization stength lambda.
 
         Returns:
-            Soft-thresholded array: sign(z) * max(|z| - l, 0).
+            Soft-thresholded array: sign(x) * max(|x| - lmdb, 0).
         """
-        return np.sign(z) * np.maximum(np.abs(z) - l, 0)
+        return np.sign(x) * np.maximum(np.abs(x) - lmbd, 0)
 
     def grad(
         self, X: pd.DataFrame, y: pd.DataFrame, beta: np.ndarray, b0: float
@@ -86,15 +87,15 @@ class LogisticRegression:
         Returns:
             Tuple of (grad_b0, grad_beta) - gradients with respect to intercept and coefficients.
         """
-        n = len(X)
         probs = self.sigmoid(X @ beta + b0)
         error = probs - y
-        grad_beta = X.T @ error # / n
-        grad_b0 = np.sum(error) # / n
+        grad_beta = X.T @ error
+        grad_b0 = np.sum(error)
         return grad_b0, grad_beta
 
     def lip_const(self, X: pd.DataFrame) -> float:
-        """Compute Lipschitz constant for gradient of logistic loss.
+        """Compute Lipschitz constant L = λ_max(XX^T) / 4, where λ_max(A) return the largest 
+        eigenvalue of matrix A.
 
         Args:
             X: Feature matrix.
@@ -102,7 +103,7 @@ class LogisticRegression:
         Returns:
             Lipschitz constant used as the step size in FISTA.
         """
-        return np.linalg.norm(X, ord=2) ** 2 / 4 #(4 * len(X))
+        return eigsh(X @ X.T, k=1, which="LM", return_eigenvectors=False)[0] / 4.0
 
     def fit(self, X_train: pd.DataFrame, y_train: pd.DataFrame) -> None:
         """Fit logistic regression model using FISTA algorithm.
@@ -118,22 +119,21 @@ class LogisticRegression:
         max_iter = self.max_iter
         n, p = X_train.shape
         L = self.lip_const(X_train)
-        step = 1 / L
+        step = 1.0 / L
+
+        # initialize beta and t
         beta = np.zeros(p)  # regularized
         b0 = 0.0  # intercept not regularized
-        # beta_old = beta.copy()
-        # b0_old = b0
         y_beta = beta.copy()
         y_b0 = b0
-        t = 1
+        t = 1.0
         did_converge = False
 
         for i in range(max_iter):
             grad_b0, grad_beta = self.grad(X_train, y_train, y_beta, y_b0)
             z_beta = y_beta - step * grad_beta
-            z_b0 = y_b0 - step * grad_b0
+            b0_new = y_b0 - step * grad_b0
             beta_new = self.soft_thresh(z_beta, lmbd * step)
-            b0_new = z_b0
             t_new = (1 + np.sqrt(1 + 4 * t**2)) / 2
             y_beta = beta_new + (t - 1) / t_new * (beta_new - beta)
             y_b0 = b0_new + (t - 1) / t_new * (b0_new - b0)
