@@ -22,11 +22,11 @@ class LogisticRegression:
     It supports lambda optimization based on the validation datset and chosen performance metric.
     """
 
-    def __init__(self, lmbd: float = 0.5, max_iter: int = 1000, tol: float = 1e-4):
+    def __init__(self, lmbd: float = 1, max_iter: int = 1000, tol: float = 1e-4):
         """Initialize LogisticRegression with empty results
 
         Args:
-           lmbd: L1 regularization parameter (default: 0.5).
+           lmbd: L1 regularization parameter (default: 1).
            max_iter: Maximum number of iterations (default: 1000).
            tol: Stopping criterion (default: 1e-4). The optimization problem is solved when ||b_{n} - b_{n-1}|| < tol.
         """
@@ -219,7 +219,7 @@ class LogisticRegression:
             raise ValueError("Call fit() before validate().")
 
         self.results[measure] = []
-        lambdas = [0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10]
+        lambdas = [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10, 20, 50, 100]
 
         for l in lambdas:
             self.lmbd = l
@@ -271,10 +271,10 @@ class LogisticRegression:
         plt.plot(x, y, marker="o")
         plt.xlabel("Lambda")
         plt.ylabel(measure)
+        plt.xscale("log")
         plt.title(f"{measure} on X_valid vs lambda\nModel fitted on X_train")
         plt.show()
 
-    # to do plot b0??
     def plot_coefficients(self) -> None:
         """Plot coefficient values across lambda regularization strengths.
 
@@ -285,7 +285,7 @@ class LogisticRegression:
         original_beta = self.beta
         original_b0 = self.b0
         if not self.betas:
-            lambdas = [0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10]
+            lambdas = [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10, 20, 50, 100]
             for l in lambdas:
                 self.lmbd = l
                 self.fit(self.X, self.y)
@@ -312,13 +312,14 @@ class LogisticRegression:
         colors = [cmap(i / max(n_coeffs - 1, 1)) for i in range(n_coeffs)]
 
         for i in range(n_coeffs):
-            plt.plot(
+            ax.plot(
                 lambdas, coeffs[:, i], label=f"b{i+1}", marker="o", color=colors[i]
             )
 
+        ax.axhline(y=0, color="black", linestyle="--", linewidth=1) 
         ax.set_xlabel("Lambda")
         ax.set_ylabel("Coefficient value")
-        ax.set_title("Coefficient value depending on regularizarion strength")
-        ax.legend()
-        # ax.set_yscale("log")
-        # ax.show()
+        ax.set_title("Coefficient value depending on regularization strength")
+        ax.set_xscale("log")
+        ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), title="Coefficients") 
+        fig.tight_layout()
