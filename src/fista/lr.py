@@ -49,8 +49,12 @@ class LogisticRegression:
             "pr_auc": [],
         }
         self.results = results
+        self.convergence_history = {
+            "objective": [],
+            "beta_error": [],  # only if beta_true is provided
+        }
 
-    def sigmoid(self, X: pd.DataFrame) -> np.ndarray:
+    def sigmoid(self, X: np.ndarray) -> np.ndarray:
         """Compute sigmoid function.
 
         Args:
@@ -66,15 +70,15 @@ class LogisticRegression:
 
         Args:
             x: Input array to threshold.
-            lmbd: Regularization stength lambda.
+            lmbd: Regularization strength lambda.
 
         Returns:
-            Soft-thresholded array: sign(x) * max(|x| - lmdb, 0).
+            Soft-thresholded array: sign(x) * max(|x| - lmbd, 0).
         """
         return np.sign(x) * np.maximum(np.abs(x) - lmbd, 0)
 
     def grad(
-        self, X: pd.DataFrame, y: pd.DataFrame, beta: np.ndarray, b0: float
+        self, X: pd.DataFrame, y: np.ndarray, beta: np.ndarray, b0: float
     ) -> tuple[float, np.ndarray]:
         """Compute gradient of logistic loss function.
 
@@ -85,7 +89,7 @@ class LogisticRegression:
             b0: Intercept.
 
         Returns:
-            Tuple of (grad_b0, grad_beta) - gradients with respect to intercept and coefficients.
+            Tuple of (grad_b0, grad_beta) — gradients with respect to intercept and coefficients.
         """
         probs = self.sigmoid(X @ beta + b0)
         error = probs - y
@@ -94,7 +98,7 @@ class LogisticRegression:
         return grad_b0, grad_beta
 
     def lip_const(self, X: pd.DataFrame) -> float:
-        """Compute Lipschitz constant L = λ_max(XX^T) / 4, where λ_max(A) return the largest 
+        """Compute Lipschitz constant L = λ_max(XX^T) / 4, where λ_max(A) returns the largest
         eigenvalue of matrix A.
 
         Args:
@@ -103,14 +107,34 @@ class LogisticRegression:
         Returns:
             Lipschitz constant used as the step size in FISTA.
         """
-        return eigsh(X @ X.T, k=1, which="LM", return_eigenvectors=False)[0] / 4.0
+        X_np = X.to_numpy()
+        return eigsh(X_np @ X_np.T, k=1, which="LM", return_eigenvectors=False)[0] / 4.0
+    
+    def logistic_loss(self, X: pd.DataFrame, y: np.ndarray, beta: np.ndarray, b0: float) -> float:
+        """Compute regularized logistic loss.
 
-    def fit(self, X_train: pd.DataFrame, y_train: pd.DataFrame) -> None:
-        """Fit logistic regression model using FISTA algorithm.
+        Uses a numerically stable formulation to avoid overflow in exp.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            beta: Coefficient vector.
+            b0: Intercept.
+
+        Returns:
+            Mean logistic loss plus L1 penalty: mean(loss) + lmbd * ||beta||_1.
+        """
+        logits = X @ beta + b0
+        loss = np.mean(np.maximum(logits, 0) - logits * y + np.log1p(np.exp(-np.abs(logits))))
+        return loss + self.lmbd * np.sum(np.abs(beta))
+
+    def fit(self, X_train: pd.DataFrame, y_train: np.ndarray, beta_true=None) -> None:
+        """Fit logistic regression model using FISTA.
 
         Args:
             X_train: Training feature matrix.
             y_train: Training labels.
+            beta_true: True coefficient vector for tracking convergence error (default: None).
         """
 
         self.X = X_train
@@ -129,6 +153,12 @@ class LogisticRegression:
         t = 1.0
         did_converge = False
 
+        self.convergence_history = {
+            "objective": [],
+            "beta_error": [],  # only if beta_true is provided
+        }
+        hist = self.convergence_history
+
         for i in range(max_iter):
             grad_b0, grad_beta = self.grad(X_train, y_train, y_beta, y_b0)
             z_beta = y_beta - step * grad_beta
@@ -146,6 +176,13 @@ class LogisticRegression:
             b0 = b0_new
             t = t_new
 
+            # save convergence data
+            hist["objective"].append(self.logistic_loss(X_train, y_train, beta, b0))
+            if beta_true is not None:
+                hist["beta_error"].append(
+                    np.linalg.norm(beta - beta_true) / np.linalg.norm(beta_true)
+                )
+
             if beta_change < self.tol and b0_change < self.tol:
                 did_converge = True
                 break
@@ -159,7 +196,7 @@ class LogisticRegression:
         self.b0 = b0
 
     def validate(
-        self, X_valid: pd.DataFrame, y_valid: pd.DataFrame, measure: str
+        self, X_valid: pd.DataFrame, y_valid: np.ndarray, measure: str
     ) -> None:
         """Validate model on validation set across multiple regularization strengths.
 
