@@ -197,17 +197,20 @@ class LogisticRegression:
 
     def validate(
         self, X_valid: pd.DataFrame, y_valid: np.ndarray, measure: str
-    ) -> None:
+    ) -> "LogisticRegression":
         """Validate model on validation set across multiple regularization strengths.
 
         Fits the model with different lambda values and selects the best lambda based on
-        the specified performance measure. After performing the method the optimal lambda
-        and corresponding betas are set as if method fit() was performed with the optimal lambda.
+        the specified performance measure. Returns a new instance fitted with the best lambda.
+        The current instance is not modified.
 
         Args:
             X_valid: Validation feature matrix.
             y_valid: Validation labels.
             measure: Performance metric to optimize ('recall', 'precision', 'f1', 'bal_acc', 'roc_auc', or 'pr_auc').
+
+        Returns:
+            A new LogisticRegression instance fitted with the best lambda.
 
         Raises:
             ValueError: If measure is not in supported metrics.
@@ -218,23 +221,28 @@ class LogisticRegression:
         if self.X is None:
             raise ValueError("Call fit() before validate().")
 
-        self.results[measure] = []
         lambdas = [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10, 20, 50, 100]
+        scores = []
+        betas = {}
+        b0s = {}
 
         for l in lambdas:
-            self.lmbd = l
-            self.fit(self.X, self.y)
-            y_score = self.predict_proba(X_valid)
+            candidate = LogisticRegression(lmbd=l, max_iter=self.max_iter, tol=self.tol)
+            candidate.fit(self.X, self.y)
+            y_score = candidate.predict_proba(X_valid)
             y_pred = y_score > 0.5
-            val = MEASURES[measure].evaluate(y_valid, y_pred, y_score)
-            self.results[measure].append(val)
-            self.betas[l] = self.beta
-            self.b0s[l] = self.b0
+            scores.append(MEASURES[measure].evaluate(y_valid, y_pred, y_score))
+            betas[l] = candidate.beta
+            b0s[l] = candidate.b0
 
-        best_id = np.argmax(self.results[measure])
-        self.lmbd = lambdas[best_id]
-        self.beta = self.betas[self.lmbd]
-        self.b0 = self.b0s[self.lmbd]
+        self.results[measure] = scores
+        self.betas = betas
+        self.b0s = b0s
+
+        best_lmbd = lambdas[np.argmax(scores)]
+        best = LogisticRegression(lmbd=best_lmbd, max_iter=self.max_iter, tol=self.tol)
+        best.fit(self.X, self.y)
+        return best
 
     def predict_proba(self, X_test: pd.DataFrame) -> np.ndarray:
         """Predict probability of positive class.
