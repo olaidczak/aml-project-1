@@ -125,7 +125,7 @@ class LogisticRegression:
             Mean logistic loss plus L1 penalty: mean(loss) + lmbd * ||beta||_1.
         """
         logits = X @ beta + b0
-        loss = np.mean(np.maximum(logits, 0) - logits * y + np.log1p(np.exp(-np.abs(logits))))
+        loss = np.sum(np.maximum(logits, 0) - logits * y + np.log1p(np.exp(-np.abs(logits))))
         return loss + self.lmbd * np.sum(np.abs(beta))
 
     def fit(self, X_train: pd.DataFrame, y_train: np.ndarray, beta_true=None) -> None:
