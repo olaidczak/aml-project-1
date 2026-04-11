@@ -109,8 +109,10 @@ class LogisticRegression:
         """
         X_np = X.to_numpy()
         return eigsh(X_np @ X_np.T, k=1, which="LM", return_eigenvectors=False)[0] / 4.0
-    
-    def logistic_loss(self, X: pd.DataFrame, y: np.ndarray, beta: np.ndarray, b0: float) -> float:
+
+    def logistic_loss(
+        self, X: pd.DataFrame, y: np.ndarray, beta: np.ndarray, b0: float
+    ) -> float:
         """Compute regularized logistic loss.
 
         Args:
@@ -123,7 +125,9 @@ class LogisticRegression:
             Sum of logistic loss plus L1 penalty: sum(loss) + lmbd * ||beta||_1.
         """
         logits = X @ beta + b0
-        loss = np.sum(np.maximum(logits, 0) - logits * y + np.log1p(np.exp(-np.abs(logits))))
+        loss = np.sum(
+            np.maximum(logits, 0) - logits * y + np.log1p(np.exp(-np.abs(logits)))
+        )
         return loss + self.lmbd * np.sum(np.abs(beta))
 
     def fit(self, X_train: pd.DataFrame, y_train: np.ndarray, beta_true=None) -> None:
@@ -194,7 +198,7 @@ class LogisticRegression:
         self.b0 = b0
 
     def validate(
-        self, X_valid: pd.DataFrame, y_valid: np.ndarray, measure: str, lambdas = None
+        self, X_valid: pd.DataFrame, y_valid: np.ndarray, measure: str, lambdas=None
     ) -> "LogisticRegression":
         """Validate model on validation set across multiple regularization strengths.
 
@@ -220,9 +224,27 @@ class LogisticRegression:
         if self.X is None:
             raise ValueError("Call fit() before validate().")
 
-        #lambdas = [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10, 20, 50, 100]
-        # Zamiast 18 wartości, zostawiamy te, które pokrywają pełen zakres:
-        lambdas = [0.01, 0.1, 0.5, 1.0, 10.0, 100.0]
+        if lambdas is None:
+            lambdas = [
+                0.001,
+                0.005,
+                0.01,
+                0.05,
+                0.1,
+                0.3,
+                0.5,
+                0.7,
+                0.9,
+                1,
+                2,
+                3,
+                5,
+                7,
+                10,
+                20,
+                50,
+                100,
+            ]
         scores = []
         betas = {}
         b0s = {}
@@ -284,15 +306,34 @@ class LogisticRegression:
         plt.title(f"{measure} on X_valid vs lambda\nModel fitted on X_train")
         plt.show()
 
-    def plot_coefficients(self, lambdas = None) -> None:
+    def plot_coefficients(self, lambdas=None) -> None:
         """Plot coefficient values across lambda regularization strengths.
 
         Visualizes how each coefficient changes as the regularization parameter lambda increases,
         showing the effect of L1 regularization on feature selection.
         """
         if lambdas is None:
-            lambdas = [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10, 20, 50, 100]
-        
+            lambdas = [
+                0.001,
+                0.005,
+                0.01,
+                0.05,
+                0.1,
+                0.3,
+                0.5,
+                0.7,
+                0.9,
+                1,
+                2,
+                3,
+                5,
+                7,
+                10,
+                20,
+                50,
+                100,
+            ]
+
         original_lmbd = self.lmbd
         original_beta = self.beta
         original_b0 = self.b0
@@ -323,14 +364,12 @@ class LogisticRegression:
         colors = [cmap(i / max(n_coeffs - 1, 1)) for i in range(n_coeffs)]
 
         for i in range(n_coeffs):
-            ax.plot(
-                lambdas, coeffs[:, i], label=f"b{i+1}", marker="o", color=colors[i]
-            )
+            ax.plot(lambdas, coeffs[:, i], label=f"b{i+1}", marker="o", color=colors[i])
 
-        ax.axhline(y=0, color="black", linestyle="--", linewidth=1) 
+        ax.axhline(y=0, color="black", linestyle="--", linewidth=1)
         ax.set_xlabel("Lambda")
         ax.set_ylabel("Coefficient value")
         ax.set_title("Coefficient value depending on regularization strength")
         ax.set_xscale("log")
-        ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), title="Coefficients") 
+        ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), title="Coefficients")
         fig.tight_layout()

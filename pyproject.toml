@@ -3,18 +3,27 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fista"
+name = "aml-project"
 version = "0.1.0"
-requires-python = ">=3.8"
+requires-python = ">=3.14"
 dependencies = [
     "numpy==2.4.3",
     "pandas==3.0.1",
+    "seaborn==0.13.2",
     "matplotlib==3.10.8",
     "scikit-learn==1.8.0",
     "scipy==1.17.1",
     "ucimlrepo==0.0.7",
+]
+
+[project.optional-dependencies]
+dev = [
     "ipykernel",
     "ipython",
     "jupyter_client",
     "jupyter_core",
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["models*", "data*"]

@@ -11,9 +11,8 @@ def apply_missingness(y: NDArray[np.floating], probabilities: NDArray[np.floatin
     determines whether the label is hidden (replaced with -1).
 
     Args:
-        y: True label vector of shape ``(n_samples,)``.
-        probabilities: Per-sample probability of the label being missing,
-            shape ``(n_samples,)``.
+        y: True label vector.
+        probabilities: Per-sample probability of the label being missing.
 
     Returns:
         Label vector with missing entries set to -1.

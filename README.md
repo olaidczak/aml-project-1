@@ -15,5 +15,5 @@
 
 3. **Install packages**
 ```bash
-   pip install -e .
+   pip install -e ".[dev]"
 ```

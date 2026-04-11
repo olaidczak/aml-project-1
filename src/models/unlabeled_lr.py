@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.neighbors import kneighbors_graph
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, roc_auc_score
-from fista.lr import LogisticRegression  # Główny model bazowy
+from models.fista_lr import LogisticRegression  
 
 
 def _sigmoid(z):
