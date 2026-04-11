@@ -22,7 +22,7 @@ class LogisticRegression:
     It supports lambda optimization based on the validation datset and chosen performance metric.
     """
 
-    def __init__(self, lmbd: float = 1, max_iter: int = 1000, tol: float = 1e-4):
+    def __init__(self, lmbd: float = 1, max_iter: int = 400, tol: float = 1e-4):
         """Initialize LogisticRegression with empty results
 
         Args:
@@ -220,9 +220,9 @@ class LogisticRegression:
         if self.X is None:
             raise ValueError("Call fit() before validate().")
 
-        if lambdas is None:
-            lambdas = [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10, 20, 50, 100]
-        
+        #lambdas = [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10, 20, 50, 100]
+        # Zamiast 18 wartości, zostawiamy te, które pokrywają pełen zakres:
+        lambdas = [0.01, 0.1, 0.5, 1.0, 10.0, 100.0]
         scores = []
         betas = {}
         b0s = {}
