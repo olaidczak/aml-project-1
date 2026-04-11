@@ -26,9 +26,9 @@ def evaluate_model(
     """Evaluate a binary classifier using classification metrics.
 
     Args:
-        model: A fitted classifier with a ``predict_proba`` method.
-        X: Feature matrix of shape ``(n_samples, n_features)``.
-        y_true: Ground-truth binary labels of shape ``(n_samples,)``.
+        model: A fitted classifier.
+        X: Feature matrix.
+        y_true: Ground-truth binary labels.
         threshold: Decision threshold for converting probabilities to class predictions.
 
     Returns:
@@ -87,9 +87,7 @@ def generate_data(
         alpha: Intercept term in the linear predictor.
 
     Returns:
-        Tuple of (X, y, beta_true) where X is the feature matrix of shape
-        ``(n, len(coefs) + k)``, y is the binary response vector, and beta_true
-        is the full coefficient vector of length ``len(coefs) + k``.
+        Tuple of (X, y, beta_true).
     """
     l = len(coefs)
     p = l + k
@@ -119,10 +117,6 @@ def generate_data_probit(
 ) -> tuple[pd.DataFrame, pd.Series, NDArray[np.floating]]:
     """Generate a synthetic binary classification dataset via a probit model.
 
-    Features are drawn from a multivariate normal with covariance
-    (correlation ``rho`` between adjacent features). The linear predictor
-    includes pairwise interactions and quadratic terms among signal features.
-
     Args:
         coefs: True coefficients for the signal features.
         n: Number of samples.
@@ -132,9 +126,7 @@ def generate_data_probit(
         interaction_strength: Scaling factor applied to pairwise interaction and quadratic terms.
 
     Returns:
-        Tuple of (X, y, beta_true) where X is the feature matrix of shape
-        ``(n, len(coefs) + k)``, y is the binary response vector, and beta_true
-        is the full coefficient vector of length ``len(coefs) + k``.
+        Tuple of (X, y, beta_true).
     """
     l = len(coefs)
     p = l + k
@@ -170,10 +162,6 @@ def plot_beta_comparison(
 ) -> None:
     """Plot stem charts comparing estimated coefficients across solvers and lambda values.
 
-    For each value in lambdas, fits the FISTA logistic regression, sklearn's
-    liblinear, and sklearn's saga solvers, then plots their estimated coefficients
-    alongside the true coefficients.
-
     Args:
         X_train: Training feature matrix.
         y_train: Training binary labels.
@@ -181,7 +169,7 @@ def plot_beta_comparison(
         lambdas: List of L1 regularisation strengths to evaluate.
         title: Figure suptitle.
     """
-    from fista.lr import LogisticRegression
+    from models.fista_lr import LogisticRegression
     from sklearn.linear_model import LogisticRegression as LogisticRegressionSKL
 
     fig = plt.figure(figsize=(18, 5))
