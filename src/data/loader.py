@@ -70,3 +70,36 @@ def preprocess_data(X: pd.DataFrame, threshold: float = 0.9) -> pd.DataFrame:
     X_scaled = pd.DataFrame(scaler.fit_transform(X_reduced), columns=X_reduced.columns)
 
     return X_scaled
+
+
+def preprocess_after_split(X_train, X_valid, X_test, threshold=0.9):
+    """
+    Wykonuje preprocesing zabezpieczając przed wyciekiem danych (Data Leakage).
+    Fituje transformatory TYLKO na zbiorze treningowym.
+    """
+    # 1. Imputacja braków na podstawie średnich z TRAIN
+    imputer = SimpleImputer(strategy="mean")
+    X_train_imp = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
+    X_valid_imp = pd.DataFrame(imputer.transform(X_valid), columns=X_valid.columns)
+    X_test_imp = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
+
+    # 2. Usuwanie kolinearnych zmiennych na podstawie korelacji w TRAIN
+    corr_matrix = X_train_imp.corr().abs()
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+    to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
+
+    X_train_red = X_train_imp.drop(columns=to_drop)
+    X_valid_red = X_valid_imp.drop(columns=to_drop)
+    X_test_red = X_test_imp.drop(columns=to_drop)
+
+    # 3. Skalowanie danych (parametry z TRAIN)
+    scaler = StandardScaler()
+    X_train_scl = pd.DataFrame(
+        scaler.fit_transform(X_train_red), columns=X_train_red.columns
+    )
+    X_valid_scl = pd.DataFrame(
+        scaler.transform(X_valid_red), columns=X_valid_red.columns
+    )
+    X_test_scl = pd.DataFrame(scaler.transform(X_test_red), columns=X_test_red.columns)
+
+    return X_train_scl, X_valid_scl, X_test_scl
