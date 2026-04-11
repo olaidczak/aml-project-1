@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import pandas as pd
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 from scipy.stats import norm
 from sklearn.metrics import (
     accuracy_score,
@@ -14,7 +17,24 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 
-def evaluate_model(model, X, y_true, threshold=0.5):
+def evaluate_model(
+    model: object,
+    X: ArrayLike,
+    y_true: ArrayLike,
+    threshold: float = 0.5,
+) -> dict[str, float]:
+    """Evaluate a binary classifier using classification metrics.
+
+    Args:
+        model: A fitted classifier with a ``predict_proba`` method.
+        X: Feature matrix of shape ``(n_samples, n_features)``.
+        y_true: Ground-truth binary labels of shape ``(n_samples,)``.
+        threshold: Decision threshold for converting probabilities to class predictions.
+
+    Returns:
+        Dictionary containing accuracy, recall, precision, f1,
+        balanced_accuracy, roc_auc, and average_precision scores.
+    """
     if hasattr(model, "predict_proba"):
         proba = model.predict_proba(X)
         if len(proba.shape) == 1:
@@ -36,12 +56,41 @@ def evaluate_model(model, X, y_true, threshold=0.5):
     return results
 
 
-def sigmoid(x):
-    res = np.exp(x) / (1 + np.exp(x))
-    return res
+def sigmoid(X: np.ndarray) -> np.ndarray:
+    """Compute sigmoid function.
+
+    Args:
+        X: Input array.
+
+    Returns:
+        Sigmoid of X (element-wise).
+    """
+    return 1 / (1 + np.exp(-X))
 
 
-def generate_data(coefs, n=1000, k=20, alpha=-1):
+def generate_data(
+    coefs: ArrayLike,
+    n: int = 1000,
+    k: int = 20,
+    alpha: float = -1,
+) -> tuple[pd.DataFrame, pd.Series, NDArray[np.floating]]:
+    """Generate a synthetic binary classification dataset via a logistic model.
+
+    The first ``len(coefs)`` features are signal features with the given
+    coefficients; the remaining ``k`` features are noise with zero coefficients.
+    Features are drawn i.i.d. from ``N(0, 1)``.
+
+    Args:
+        coefs: True coefficients for the signal features.
+        n: Number of samples.
+        k: Number of noise (irrelevant) features appended after the signal features.
+        alpha: Intercept term in the linear predictor.
+
+    Returns:
+        Tuple of (X, y, beta_true) where X is the feature matrix of shape
+        ``(n, len(coefs) + k)``, y is the binary response vector, and beta_true
+        is the full coefficient vector of length ``len(coefs) + k``.
+    """
     l = len(coefs)
     p = l + k
     X = np.zeros((n, p))
@@ -60,7 +109,33 @@ def generate_data(coefs, n=1000, k=20, alpha=-1):
     return pd.DataFrame(X), pd.Series(y), beta_true
 
 
-def generate_data_probit(coefs, n=1000, k=20, alpha=0, rho=0.5, interaction_strength=1.0):
+def generate_data_probit(
+    coefs: ArrayLike,
+    n: int = 1000,
+    k: int = 20,
+    alpha: float = 0,
+    rho: float = 0.5,
+    interaction_strength: float = 1.0,
+) -> tuple[pd.DataFrame, pd.Series, NDArray[np.floating]]:
+    """Generate a synthetic binary classification dataset via a probit model.
+
+    Features are drawn from a multivariate normal with covariance
+    (correlation ``rho`` between adjacent features). The linear predictor
+    includes pairwise interactions and quadratic terms among signal features.
+
+    Args:
+        coefs: True coefficients for the signal features.
+        n: Number of samples.
+        k: Number of noise (irrelevant) features appended after the signal features.
+        alpha: Intercept term in the linear predictor.
+        rho: correlation parameter for the feature covariance matrix.
+        interaction_strength: Scaling factor applied to pairwise interaction and quadratic terms.
+
+    Returns:
+        Tuple of (X, y, beta_true) where X is the feature matrix of shape
+        ``(n, len(coefs) + k)``, y is the binary response vector, and beta_true
+        is the full coefficient vector of length ``len(coefs) + k``.
+    """
     l = len(coefs)
     p = l + k
     cov_matrix = np.array([[rho ** abs(i - j) for j in range(p)] for i in range(p)])
@@ -86,7 +161,26 @@ def generate_data_probit(coefs, n=1000, k=20, alpha=0, rho=0.5, interaction_stre
     return pd.DataFrame(X), pd.Series(y), beta_true
 
 
-def plot_beta_comparison(X_train, y_train, beta_true, lambdas, title):
+def plot_beta_comparison(
+    X_train: ArrayLike,
+    y_train: ArrayLike,
+    beta_true: NDArray[np.floating],
+    lambdas: list[float],
+    title: str,
+) -> None:
+    """Plot stem charts comparing estimated coefficients across solvers and lambda values.
+
+    For each value in lambdas, fits the FISTA logistic regression, sklearn's
+    liblinear, and sklearn's saga solvers, then plots their estimated coefficients
+    alongside the true coefficients.
+
+    Args:
+        X_train: Training feature matrix.
+        y_train: Training binary labels.
+        beta_true: True coefficient vector used to generate the data.
+        lambdas: List of L1 regularisation strengths to evaluate.
+        title: Figure suptitle.
+    """
     from fista.lr import LogisticRegression
     from sklearn.linear_model import LogisticRegression as LogisticRegressionSKL
 
@@ -132,7 +226,22 @@ def plot_beta_comparison(X_train, y_train, beta_true, lambdas, title):
     plt.show()
 
 
-def plot_convergence(objective, beta_error, title, log_scale_obj=False):
+def plot_convergence(
+    objective: NDArray[np.floating],
+    beta_error: NDArray[np.floating],
+    title: str,
+    log_scale_obj: bool = False,
+) -> None:
+    """Plot mean convergence curves with 95% confidence intervals across runs.
+
+    Args:
+        objective: Array of shape ``(R, T)`` containing the objective value at each
+            of ``T`` iterations for each of ``R`` independent runs.
+        beta_error: Array of shape ``(R, T)`` containing the relative beta error
+            ``||beta - beta_hat|| / ||beta||`` at each iteration for each run.
+        title: Figure suptitle.
+        log_scale_obj: If ``True``, the objective convergence subplot uses a log y-axis.
+    """
     R = objective.shape[0]
     z = 1.96
 
