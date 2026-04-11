@@ -113,8 +113,6 @@ class LogisticRegression:
     def logistic_loss(self, X: pd.DataFrame, y: np.ndarray, beta: np.ndarray, b0: float) -> float:
         """Compute regularized logistic loss.
 
-        Uses a numerically stable formulation to avoid overflow in exp.
-
         Args:
             X: Feature matrix.
             y: Target labels.
@@ -122,7 +120,7 @@ class LogisticRegression:
             b0: Intercept.
 
         Returns:
-            Mean logistic loss plus L1 penalty: mean(loss) + lmbd * ||beta||_1.
+            Sum of logistic loss plus L1 penalty: sum(loss) + lmbd * ||beta||_1.
         """
         logits = X @ beta + b0
         loss = np.sum(np.maximum(logits, 0) - logits * y + np.log1p(np.exp(-np.abs(logits))))
@@ -196,7 +194,7 @@ class LogisticRegression:
         self.b0 = b0
 
     def validate(
-        self, X_valid: pd.DataFrame, y_valid: np.ndarray, measure: str
+        self, X_valid: pd.DataFrame, y_valid: np.ndarray, measure: str, lambdas = None
     ) -> "LogisticRegression":
         """Validate model on validation set across multiple regularization strengths.
 
@@ -208,6 +206,7 @@ class LogisticRegression:
             X_valid: Validation feature matrix.
             y_valid: Validation labels.
             measure: Performance metric to optimize ('recall', 'precision', 'f1', 'bal_acc', 'roc_auc', or 'pr_auc').
+            lambdas: List of lamba values to test, if not provided the default list will be used.
 
         Returns:
             A new LogisticRegression instance fitted with the best lambda.
@@ -221,7 +220,9 @@ class LogisticRegression:
         if self.X is None:
             raise ValueError("Call fit() before validate().")
 
-        lambdas = [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10, 20, 50, 100]
+        if lambdas is None:
+            lambdas = [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10, 20, 50, 100]
+        
         scores = []
         betas = {}
         b0s = {}
@@ -283,17 +284,19 @@ class LogisticRegression:
         plt.title(f"{measure} on X_valid vs lambda\nModel fitted on X_train")
         plt.show()
 
-    def plot_coefficients(self) -> None:
+    def plot_coefficients(self, lambdas = None) -> None:
         """Plot coefficient values across lambda regularization strengths.
 
         Visualizes how each coefficient changes as the regularization parameter lambda increases,
         showing the effect of L1 regularization on feature selection.
         """
+        if lambdas is None:
+            lambdas = [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10, 20, 50, 100]
+        
         original_lmbd = self.lmbd
         original_beta = self.beta
         original_b0 = self.b0
         if not self.betas:
-            lambdas = [0.001, 0.005, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 2, 3, 5, 7, 10, 20, 50, 100]
             for l in lambdas:
                 self.lmbd = l
                 self.fit(self.X, self.y)
