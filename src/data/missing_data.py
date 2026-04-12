@@ -57,7 +57,7 @@ def generate_mar1(X: pd.DataFrame, y: ArrayLike) -> pd.Series:
     return pd.Series(apply_missingness(y, probabilities), name="Y_obs")
 
 
-def generate_mar2(X: pd.DataFrame, y: ArrayLike) -> pd.Series:
+def generate_mar2(X: pd.DataFrame, y: ArrayLike, bias=0.5) -> pd.Series:
     """Generate Missing At Random (MAR) labels driven by all features.
 
     A random linear combination of all features is standardized,
@@ -76,7 +76,7 @@ def generate_mar2(X: pd.DataFrame, y: ArrayLike) -> pd.Series:
     linear_comb_norm = (linear_comb - np.mean(linear_comb)) / (
         np.std(linear_comb) + 1e-8
     )
-    probabilities = expit(linear_comb_norm - 0.5)
+    probabilities = expit(linear_comb_norm - bias)
     return pd.Series(apply_missingness(y, probabilities), name="Y_obs")
 
 

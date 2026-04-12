@@ -18,6 +18,9 @@
    pip install -e ".[dev]"
 ```
 
+## Demo
+Notebook `demo.ipynb` demonstrates implemented functionalites.
+
 ## Repository Structure
 
 ```
@@ -28,12 +31,11 @@
     │   ├── loader.py       # Dataset loading utilities
     │   └── missing_data.py # Missing data generation
     ├── experiments/         # Experiment notebooks and helpers
-    │   ├── comparison_lr.ipynb          # Logistic regression comparison
-    │   ├── task3.ipynb                  # Task 3 experiments
-    │   ├── task3_visualizations.ipynb   # Task 3 visualizations
+    │   ├── comparison_lr.ipynb          # FISTA and Sklearn comparison
+    │   ├── comparison_unlabeled.ipynb   # Task 3 experiments
     │   └── utils.py                    # Experiment utilities
     └── models/             # Model implementations
         ├── fista_lr.py     # FISTA logistic regression
         ├── unlabeled_lr.py # Unlabeled logistic regression
-        └── measures.py     # Evaluation measures
+        └── measures.py     # Evaluation measures (only used in FISTA implementation)
 ```
