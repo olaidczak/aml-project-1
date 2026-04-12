@@ -89,15 +89,14 @@ def generate_mnar(
 ) -> pd.Series:
     """Generate Missing Not At Random (MNAR) labels with class-dependent observation rates.
 
-    For each class k, the fraction of observed labels decays geometrically
-    as ratio / gamma^k, so later classes are progressively more hidden.
+    For each class k, the fraction of observed labels is ratio / gamma^k.
     A minimum number of observed labels per class is enforced.
 
     Args:
         X: Feature matrix (unused, kept for a consistent API).
         y: True label vector.
         ratio: Base observation ratio for the first class (default: 0.2).
-        gamma: Geometric decay factor across classes (default: 3.0).
+        gamma: Decay factor across classes (default: 3.0).
         min_labels: Minimum number of observed labels per class (default: 5).
 
     Returns:

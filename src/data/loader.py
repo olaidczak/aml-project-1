@@ -45,10 +45,10 @@ def load_openml_data(data_id: int) -> tuple[pd.DataFrame, pd.Series]:
 
 
 def preprocess_data(X: pd.DataFrame, threshold: float = 0.9) -> pd.DataFrame:
-    """Impute missing values, drop highly correlated features and standardise.
+    """Drop highly correlated features and standardise.
 
-    Pipeline: mean imputation, removal of features whose pairwise absolute
-    correlation exceeds threshold, and z-score standardisation.
+    Pipeline: removal of features whose pairwise absolute correlation exceeds 
+    threshold, and standardisation.
 
     Args:
         X: Raw feature matrix.
@@ -58,13 +58,10 @@ def preprocess_data(X: pd.DataFrame, threshold: float = 0.9) -> pd.DataFrame:
     Returns:
         Preprocessed DataFrame.
     """
-    imputer = SimpleImputer(strategy="mean")
-    X_imputed = pd.DataFrame(imputer.fit_transform(X), columns=X.columns)
-
-    corr_matrix = X_imputed.corr().abs()
+    corr_matrix = X.corr().abs()
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
     to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
-    X_reduced = X_imputed.drop(columns=to_drop)
+    X_reduced = X.drop(columns=to_drop)
 
     scaler = StandardScaler()
     X_scaled = pd.DataFrame(scaler.fit_transform(X_reduced), columns=X_reduced.columns)
@@ -72,42 +69,22 @@ def preprocess_data(X: pd.DataFrame, threshold: float = 0.9) -> pd.DataFrame:
     return X_scaled
 
 
-def drop_corr_features(X, y, threshold=0.9):
-    corr_matrix = X.corr().abs()
-    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-    to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
-    X_reduced = X.drop(columns=to_drop)
-    return X_reduced
-
-def scale_after_split(X_train, X_valid, X_test):
-    scaler = StandardScaler()
-    X_train_scl = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
-    X_valid_scl = pd.DataFrame(scaler.transform(X_valid), columns=X_valid.columns)
-    X_test_scl = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns)
-
-    return X_train_scl, X_valid_scl, X_test_scl
-
-
 def preprocess_after_split(X_train, X_valid, X_test, threshold=0.9):
+    """Drop highly correlated features and standardise.
+
+    Pipeline: removal of features whose pairwise absolute correlation exceeds 
+    threshold and standardisation based on the X_train.
+
+    Args:
+        X_train: Raw trainig feature matrix.
+        X_valid: Raw validation feature matrix.
+        X_test: Raw test feature matrix.
+        threshold: Correlation cutoff — features with absolute pairwise
+            correlation above this value are dropped (default: 0.9).
+
+    Returns:
+        Preprocessed DataFrames X_train, X_valid, and X_test.
     """
-    Wykonuje preprocesing zabezpieczając przed wyciekiem danych (Data Leakage).
-    Fituje transformatory TYLKO na zbiorze treningowym.
-    """
-    # 1. Imputacja braków na podstawie średnich z TRAIN
-    # imputer = SimpleImputer(strategy="mean")
-    # X_train_imp = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
-    # X_valid_imp = pd.DataFrame(imputer.transform(X_valid), columns=X_valid.columns)
-    # X_test_imp = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
-
-    # # 2. Usuwanie kolinearnych zmiennych na podstawie korelacji w TRAIN
-    # corr_matrix = X_train_imp.corr().abs()
-    # upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-    # to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
-
-    # X_train_red = X_train_imp.drop(columns=to_drop)
-    # X_valid_red = X_valid_imp.drop(columns=to_drop)
-    # X_test_red = X_test_imp.drop(columns=to_drop)
-
     corr_matrix = X_train.corr().abs()
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
     to_drop = [col for col in upper.columns if any(upper[col] > threshold)]
@@ -115,7 +92,6 @@ def preprocess_after_split(X_train, X_valid, X_test, threshold=0.9):
     X_train_red = X_train.drop(columns=to_drop)
     X_valid_red = X_valid.drop(columns=to_drop)
     X_test_red = X_test.drop(columns=to_drop)
-    # 3. Skalowanie danych (parametry z TRAIN)
     scaler = StandardScaler()
     X_train_scl = pd.DataFrame(
         scaler.fit_transform(X_train_red), columns=X_train_red.columns

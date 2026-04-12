@@ -223,12 +223,12 @@ def plot_convergence(
     """Plot mean convergence curves with 95% confidence intervals across runs.
 
     Args:
-        objective: Array of shape ``(R, T)`` containing the objective value at each
-            of ``T`` iterations for each of ``R`` independent runs.
-        beta_error: Array of shape ``(R, T)`` containing the relative beta error
-            ``||beta - beta_hat|| / ||beta||`` at each iteration for each run.
+        objective: Array of shape (R, T) containing the objective value at each
+            of T iterations for each of R runs.
+        beta_error: Array of shape (R, T) containing the relative beta error
+        ||beta - beta_hat|| / ||beta| at each iteration for each run.
         title: Figure suptitle.
-        log_scale_obj: If ``True``, the objective convergence subplot uses a log y-axis.
+        log_scale_obj: If True, the objective convergence subplot uses a log y-axis.
     """
     R = objective.shape[0]
     z = 1.96

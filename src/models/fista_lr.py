@@ -140,6 +140,7 @@ class LogisticRegression:
         """
 
         self.X = X_train
+        y_train = np.asarray(y_train).ravel()
         self.y = y_train
         lmbd = self.lmbd
         max_iter = self.max_iter
@@ -218,6 +219,8 @@ class LogisticRegression:
         Raises:
             ValueError: If measure is not in supported metrics.
         """
+        y_valid = np.asarray(y_valid).ravel()
+
         if measure not in MEASURES:
             raise ValueError(f"Unsupported measure: {measure}")
 
@@ -371,5 +374,6 @@ class LogisticRegression:
         ax.set_ylabel("Coefficient value")
         ax.set_title("Coefficient value depending on regularization strength")
         ax.set_xscale("log")
-        ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), title="Coefficients")
+        if n_coeffs <= 35:
+            ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), title="Coefficients")
         fig.tight_layout()
